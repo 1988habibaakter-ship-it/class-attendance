@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <title>Class Attendance</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{--ink:#172033;--muted:#667085;--line:#e7eaf0;--bg:#f7f8fb;--blue:#2457d6;--blue2:#edf2ff;--green:#13865c;--red:#c23b4a}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+    button,input{font:inherit}button{cursor:pointer;border:0;border-radius:10px;padding:11px 15px;font-weight:650}
+    .primary{background:var(--blue);color:#fff}.secondary{background:#fff;border:1px solid var(--line);color:var(--ink)}.danger{background:#fff0f1;color:var(--red)}
+    button:disabled{opacity:.55;cursor:not-allowed}.wrap{max-width:1050px;margin:auto;padding:24px 18px 60px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:26px}
+    .brand{font-weight:800;font-size:19px;letter-spacing:-.4px}.brand span{color:var(--blue)}
+    .panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 3px 14px #15264a08}
+    .narrow{max-width:440px;margin:45px auto}.muted{color:var(--muted)}.small{font-size:13px}
+    h1{font-size:27px;letter-spacing:-.8px;margin:0 0 7px}h2{font-size:18px;margin:0 0 16px}
+    label{display:block;font-weight:650;font-size:13px;margin:14px 0 6px}
+    input{width:100%;padding:12px;border:1px solid #d9deea;border-radius:10px;outline:none;background:#fff}
+    input:focus{border-color:var(--blue);box-shadow:0 0 0 3px #2457d61a}
+    .stack{display:grid;gap:10px}.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .tabs{display:flex;gap:7px;margin:16px 0}.tabs button{background:#f0f2f6;color:#475467}.tabs button.active{background:var(--blue2);color:var(--blue)}
+    .hidden{display:none!important}.notice{padding:11px 13px;border-radius:10px;margin:12px 0;background:#f2f5fa;color:#475467;font-size:13px}
+    .notice.error{background:#fff0f1;color:#a52d3c}.notice.success{background:#eaf8f1;color:#11734e}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}
+    .stat{border:1px solid var(--line);border-radius:13px;padding:15px}.stat strong{display:block;font-size:25px}.stat span{font-size:12px;color:var(--muted)}
+    .markbox{text-align:center;padding:30px 18px;background:#f8faff;border:1px solid #e6ecff;border-radius:14px;margin-top:16px}
+    .markbox .big{font-size:23px;font-weight:750;margin:8px 0}
+    .tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
+    table{width:100%;border-collapse:collapse;min-width:540px}th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);font-size:13px}
+    th{background:#f8f9fc;color:#667085;font-weight:700}tr:last-child td{border-bottom:0}
+    .pill{display:inline-block;padding:4px 9px;border-radius:99px;background:#eaf8f1;color:#11734e;font-size:12px;font-weight:700}
+    .empty{text-align:center;padding:28px;color:var(--muted)}.right{display:flex;gap:8px;align-items:center}
+    @media(max-width:650px){.wrap{padding:16px 12px 40px}.panel{padding:17px}.stats{grid-template-columns:1fr 1fr}.stats .stat:last-child{grid-column:span 2}h1{font-size:23px}.narrow{margin:24px auto}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">CLASS <span>ATTENDANCE</span></div>
+    <div id="headerUser" class="right hidden"><span id="userLabel" class="small muted"></span><button class="secondary" id="logoutBtn">Log out</button></div>
+  </header>
+
+  <section id="authView" class="panel narrow">
+    <h1>Attendance portal</h1>
+    <p class="muted">Sign in to mark or view class attendance.</p>
+    <div class="tabs">
+      <button id="loginTab" class="active" type="button">Log in</button>
+      <button id="signupTab" type="button">Create student account</button>
+    </div>
+    <form id="loginForm" class="stack">
+      <div><label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="email" required></div>
+      <div><label for="loginPassword">Password</label><input id="loginPassword" type="password" autocomplete="current-password" required></div>
+      <button class="primary" type="submit">Log in</button>
+    </form>
+    <form id="signupForm" class="stack hidden">
+      <div><label for="fullName">Full name</label><input id="fullName" maxlength="80" required></div>
+      <div><label for="rollNo">Student ID / Roll number</label><input id="rollNo" maxlength="30" required></div>
+      <div><label for="signupEmail">Email</label><input id="signupEmail" type="email" autocomplete="email" required></div>
+      <div><label for="signupPassword">Password (at least 8 characters)</label><input id="signupPassword" type="password" minlength="8" autocomplete="new-password" required></div>
+      <button class="primary" type="submit">Create account</button>
+      <p class="muted small">Use your real class roll and a personal email. Your account will be assigned the student role.</p>
+    </form>
+    <div id="authMessage" class="notice hidden" role="status"></div>
+  </section>
+
+  <section id="studentView" class="hidden">
+    <div class="row"><div><h1>Student dashboard</h1><p class="muted" id="studentGreeting">Your attendance</p></div></div>
+    <div class="stats">
+      <div class="stat"><strong id="studentTotal">—</strong><span>Days marked</span></div>
+      <div class="stat"><strong id="studentMonth">—</strong><span>This month</span></div>
+      <div class="stat"><strong id="studentToday">—</strong><span>Today's status</span></div>
+    </div>
+    <div class="panel">
+      <h2>Today's attendance</h2>
+      <p class="muted small">Attendance is recorded using Bangladesh time. You can mark attendance once per day.</p>
+      <div class="markbox">
+        <div class="muted small" id="todayDate"></div>
+        <div class="big" id="markStatus">Not marked yet</div>
+        <button class="primary" id="markBtn">Mark me present</button>
+        <p class="muted small" id="markHelp">Only your own account can submit your attendance.</p>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h2>My attendance history</h2>
+      <div id="myHistory" class="empty">Loading attendance…</div>
+    </div>
+  </section>
+
+  <section id="adminView" class="hidden">
+    <div class="row"><div><h1>Admin dashboard</h1><p class="muted">Class attendance overview</p></div>
+      <div class="right"><input id="reportDate" type="date" style="width:auto"><button class="secondary" id="exportBtn">Export CSV</button></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><strong id="adminStudents">—</strong><span>Registered students</span></div>
+      <div class="stat"><strong id="adminPresent">—</strong><span>Marked present</span></div>
+      <div class="stat"><strong id="adminNotMarked">—</strong><span>Not marked</span></div>
+    </div>
+    <div class="panel">
+      <div class="row"><h2>Student attendance</h2><input id="studentSearch" placeholder="Search name or roll…" style="max-width:230px"></div>
+      <div id="adminTable" class="empty">Loading class list…</div>
+      <p class="muted small">“Not marked” does not automatically mean absent. It means no attendance entry was submitted.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+  // 1) Replace these two values with your Supabase Project URL and Publishable key.
+  const SUPABASE_URL = "PASTE_YOUR_SUPABASE_PROJECT_URL";
+  const SUPABASE_KEY = "PASTE_YOUR_SUPABASE_PUBLISHABLE_KEY";
+
+  const $ = (id) => document.getElementById(id);
+  const configured = SUPABASE_URL.startsWith("https://") && !SUPABASE_URL.includes("PASTE_") && !SUPABASE_KEY.includes("PASTE_");
+  let db = null, currentUser = null, currentProfile = null, cachedStudents = [], cachedAttendance = [];
+  const todayDhaka = () => new Intl.DateTimeFormat("en-CA", {timeZone:"Asia/Dhaka",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+  const niceDate = (d) => new Date(d+"T00:00:00+06:00").toLocaleDateString("en-BD",{day:"numeric",month:"long",year:"numeric"});
+  function message(el, text, type="") { el.textContent=text; el.className="notice"+(type?" "+type:""); el.classList.remove("hidden"); }
+  function show(view) { ["authView","studentView","adminView"].forEach(id=>$(id).classList.toggle("hidden",id!==view)); }
+  function authTab(tab) {
+    $("loginForm").classList.toggle("hidden",tab!=="login"); $("signupForm").classList.toggle("hidden",tab!=="signup");
+    $("loginTab").classList.toggle("active",tab==="login"); $("signupTab").classList.toggle("active",tab==="signup"); $("authMessage").classList.add("hidden");
+  }
+  $("loginTab").onclick=()=>authTab("login"); $("signupTab").onclick=()=>authTab("signup");
+  if (!configured) message($("authMessage"),"Setup needed: add your Supabase Project URL and Publishable key in index.html, then reload.");
+
+  async function loadProfile() {
+    const {data,error}=await db.from("profiles").select("id,full_name,roll_no,role").eq("id",currentUser.id).single();
+    if(error) throw error; currentProfile=data;
+  }
+  async function startApp() {
+    const {data:{session}}=await db.auth.getSession();
+    if(!session){show("authView");$("headerUser").classList.add("hidden");return;}
+    currentUser=session.user;
+    try {
+      await loadProfile();
+      $("headerUser").classList.remove("hidden"); $("userLabel").textContent=currentProfile.full_name+" · "+currentProfile.roll_no;
+      if(currentProfile.role==="admin"){show("adminView");await loadAdmin();}
+      else {show("studentView");await loadStudent();}
+    } catch(e) { show("authView"); message($("authMessage"),"Could not load your profile: "+e.message+" — contact the administrator.","error"); }
+  }
+  $("loginForm").onsubmit=async e=>{
+    e.preventDefault(); if(!configured)return;
+    const {error}=await db.auth.signInWithPassword({email:$("loginEmail").value.trim(),password:$("loginPassword").value});
+    if(error){message($("authMessage"),error.message,"error");return;} await startApp();
+  };
+  $("signupForm").onsubmit=async e=>{
+    e.preventDefault(); if(!configured)return;
+    const full_name=$("fullName").value.trim(),roll_no=$("rollNo").value.trim();
+    if(!full_name||!roll_no)return;
+    const {data,error}=await db.auth.signUp({email:$("signupEmail").value.trim(),password:$("signupPassword").value,options:{data:{full_name,roll_no}}});
+    if(error){message($("authMessage"),error.message,"error");return;}
+    if(data.session){message($("authMessage"),"Account created. Opening your dashboard…","success");await startApp();}
+    else {message($("authMessage"),"Account created. Check your email to confirm it, then log in.","success");authTab("login");}
+  };
+  $("logoutBtn").onclick=async()=>{await db.auth.signOut();currentUser=null;currentProfile=null;show("authView");$("headerUser").classList.add("hidden");};
+  $("markBtn").onclick=async()=>{
+    $("markBtn").disabled=true;
+    const {error}=await db.from("attendance").insert({user_id:currentUser.id});
+    if(error){message($("markHelp"),error.code==="23505"?"You have already marked attendance today.":error.message,"error");}
+    else {message($("markHelp"),"Attendance marked successfully!","success");}
+    await loadStudent(); $("markBtn").disabled=false;
+  };
+  async function loadStudent(){
+    $("studentGreeting").textContent="Hello, "+currentProfile.full_name+" · Roll "+currentProfile.roll_no;
+    $("todayDate").textContent=niceDate(todayDhaka());
+    const {data,error}=await db.from("attendance").select("attendance_date,marked_at").eq("user_id",currentUser.id).order("attendance_date",{ascending:false});
+    if(error){$("myHistory").textContent=error.message;return;}
+    const rows=data||[], today=todayDhaka(), marked=rows.some(r=>r.attendance_date===today);
+    $("studentTotal").textContent=rows.length;
+    $("studentMonth").textContent=rows.filter(r=>r.attendance_date.slice(0,7)===today.slice(0,7)).length;
+    $("studentToday").textContent=marked?"Present":"Not marked";
+    $("markStatus").textContent=marked?"You're marked present ✓":"Not marked yet";
+    $("markBtn").disabled=marked; $("markBtn").textContent=marked?"Attendance submitted":"Mark me present";
+    if(!rows.length){$("myHistory").innerHTML='<div class="empty">No attendance records yet.</div>';return;}
+    $("myHistory").innerHTML='<div class="tablewrap"><table><thead><tr><th>Date</th><th>Status</th><th>Time</th></tr></thead><tbody>'+
+      rows.map(r=>`<tr><td>${niceDate(r.attendance_date)}</td><td><span class="pill">Present</span></td><td>${new Date(r.marked_at).toLocaleTimeString("en-BD",{timeZone:"Asia/Dhaka",hour:"2-digit",minute:"2-digit"})}</td></tr>`).join("")+
+      '</tbody></table></div>';
+  }
+  $("reportDate").value=todayDhaka();
+  $("reportDate").onchange=loadAdmin; $("studentSearch").oninput=renderAdminTable;
+  async function loadAdmin(){
+    const [{data:students,error:e1},{data:attendance,error:e2}]=await Promise.all([
+      db.from("profiles").select("id,full_name,roll_no").eq("role","student").order("roll_no"),
+      db.from("attendance").select("user_id,attendance_date,marked_at").eq("attendance_date",$("reportDate").value)
+    ]);
+    if(e1||e2){$("adminTable").textContent=(e1||e2).message;return;}
+    cachedStudents=students||[];cachedAttendance=attendance||[];
+    $("adminStudents").textContent=cachedStudents.length;
+    $("adminPresent").textContent=cachedAttendance.length;
+    $("adminNotMarked").textContent=Math.max(0,cachedStudents.length-cachedAttendance.length);
+    renderAdminTable();
+  }
+  function renderAdminTable(){
+    const q=$("studentSearch").value.trim().toLowerCase(), present=new Map(cachedAttendance.map(a=>[a.user_id,a]));
+    const list=cachedStudents.filter(s=>(s.full_name+" "+s.roll_no).toLowerCase().includes(q));
+    if(!list.length){$("adminTable").innerHTML='<div class="empty">No students found.</div>';return;}
+    $("adminTable").innerHTML='<div class="tablewrap"><table><thead><tr><th>Roll</th><th>Student</th><th>Status</th><th>Marked at</th></tr></thead><tbody>'+
+      list.map(s=>{const a=present.get(s.id);return `<tr><td>${escapeHtml(s.roll_no)}</td><td>${escapeHtml(s.full_name)}</td><td>${a?'<span class="pill">Present</span>':'<span class="muted">Not marked</span>'}</td><td>${a?new Date(a.marked_at).toLocaleTimeString("en-BD",{timeZone:"Asia/Dhaka",hour:"2-digit",minute:"2-digit"}):"—"}</td></tr>`;}).join("")+
+      '</tbody></table></div>';
+  }
+  function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+  $("exportBtn").onclick=()=>{
+    const present=new Map(cachedAttendance.map(a=>[a.user_id,a]));
+    const lines=[["Roll","Student","Date","Status","Marked at"],...cachedStudents.map(s=>{const a=present.get(s.id);return [s.roll_no,s.full_name,$("reportDate").value,a?"Present":"Not marked",a?new Date(a.marked_at).toISOString():""];})];
+    const csv=lines.map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+    const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download="attendance-"+$("reportDate").value+".csv";a.click();URL.revokeObjectURL(url);
+  };
+  if(configured){db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);db.auth.onAuthStateChange(()=>setTimeout(startApp,0));startApp();}
+</script>
+</body>
+</html>
